@@ -9,26 +9,12 @@ from RPLCD.pigpio import CharLCD
 
 
 # Constants
-DELAY = 0.1
+DELAY = 0.3
 CLEAR = ' ' * 16
 
 
 # Initialize lcd
 pi = pigpio.pi()
-lcd = CharLCD(pi,
-              pin_rs=15, pin_rw=18, pin_e=16, pins_data=[21, 22, 23, 24],
-              pin_contrast=17,
-              cols=16, rows=2)
-lcd.cursor_mode = 'hide'
-lcd.home()
-
-
-# Service
-# State
-db = {'buffer': [[''], ['']],
-      'buffer_idx': [0, 0],
-      'cycle_idx':[0, 0],
-      'delay_cycles': [1, 1]}
 
 
 # Interface
@@ -41,68 +27,85 @@ class Msg(Enum):
     RESET = 2
 
 
-interface = queue.Queue()
+# Service
+class Service(Thread):
 
+    def __init__(self):
+        super().__init__()
+        self.lcd = CharLCD(pi,
+                           pin_rs=15,
+                           pin_rw=18,
+                           pin_e=16,
+                           pins_data=[21, 22, 23, 24],
+                           pin_contrast=17,
+                           cols=16, rows=2)
+        self.lcd.cursor_mode = 'hide'
+        self.lcd.clear()
+        self.lcd.home()
 
-# Routines
-def run():
-    t0 = time.time()
-    while True:
-        try:
-            event = interface.get_nowait()
-            dispatch(*event)
-        except queue.Empty:
-            pass
+        self.buffer = [[''], ['']]
+        self.buffer_idx = [0, 0]
+        self.cycle_idx = [0, 0]
+        self.delay_cycles = [1, 1]
 
-        t1 = time.time()
-        if t1 - t0 > DELAY:
-            t0 = t1
-            update_display()
+        self.interface = queue.Queue()
 
+    def run(self):
+        t0 = time.time()
+        while True:
+            try:
+                event = self.interface.get_nowait()
+                self.dispatch(*event)
+            except queue.Empty:
+                pass
 
-def dispatch(msg, data):
-    if msg == Msg.WRITE:
-        row = data.row
-        buff = data.buffer
-        delay_cycles = round(data.delay / DELAY)
-        db['buffer'][row] = buff
-        db['buffer_idx'][row] = 0
-        db['cycle_idx'][row] = 0
-        db['delay_cycles'][row] = delay_cycles
-    elif msg == Msg.RESET:
-        row = data.row
-        overwrite(row, '')
-        db['buffer'][row] = ['']
-        db['buffer_idx'][row] = 0
-        db['cycle_idx'][row] = 0
-        db['delay_cycles'][row] = 1
+            t1 = time.time()
+            if t1 - t0 > DELAY:
+                t0 = t1
+                self.update_display()
 
+    def dispatch(self, msg, data):
+        if msg == Msg.WRITE:
+            row = data.row
+            buff = data.buffer
+            delay_cycles = round(data.delay / DELAY)
+            self.buffer[row] = buff
+            self.buffer_idx[row] = 0
+            self.cycle_idx[row] = 0
+            self.delay_cycles[row] = delay_cycles
+        elif msg == Msg.RESET:
+            row = data.row
+            self.overwrite(row, '')
+            self.buffer[row] = ['']
+            self.buffer_idx[row] = 0
+            self.cycle_idx[row] = 0
+            self.delay_cycles[row] = 1
 
+    def update_display(self):
+        for row in (0, 1):
+            buffer_idx = self.buffer_idx[row]
+            cycle_idx = self.cycle_idx[row]
+            delay_cycles = self.delay_cycles[row]
+            buff = self.buffer[row]
 
-def update_display():
-    for row in (0, 1):
-        buffer_idx = db['buffer_idx'][row]
-        cycle_idx = db['cycle_idx'][row]
-        delay_cycles = db['delay_cycles'][row]
-        buff = db['buffer'][row]
+            cycle_idx = (cycle_idx + 1) % delay_cycles
+            if (cycle_idx == 0) and (delay_cycles != 1):
+                buffer_idx = (buffer_idx + 1) % len(buff)
+                self.overwrite(row, buff[buffer_idx])
 
-        cycle_idx = (cycle_idx + 1) % delay_cycles
-        if (cycle_idx == 0) and (delay_cycles != 1):
-            buffer_idx = (buffer_idx + 1) % len(buff)
-            overwrite(row, buff[buffer_idx])
+            self.buffer_idx[row] = buffer_idx
+            self.cycle_idx[row] = cycle_idx
+            
+            # THIS IS SUPER IMPORTANT
+            # The screen really can't write to two rows in
+            # sequence that quickly
+            time.sleep(0.2)
 
-        # Some hacky stuff don't worry about it it's n
-        time.sleep(DELAY)
-
-        db['buffer_idx'][row] = buffer_idx
-        db['cycle_idx'][row] = cycle_idx
-
-
-def overwrite(row, string):
-    lcd.cursor_pos = (row, 0)
-    lcd.write_string(CLEAR)
-    lcd.cursor_pos = (row, 0)
-    lcd.write_string(string)
-
-
-service = Thread(target=run)
+    def overwrite(self, row, string):
+        # The sleeps are hacky cuz the lcd is cheap
+        # Precision is not important here
+        self.lcd.cursor_pos = (row, 0)
+        self.lcd.write_string(CLEAR)
+        time.sleep(0.1)
+        self.lcd.cursor_pos = (row, 0)
+        self.lcd.write_string(string)
