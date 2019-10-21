@@ -5,7 +5,8 @@ import time
 
 import netifaces
 
-import lcd
+from pittl import logger
+import pittl.lcd as lcd
 
 
 class InetError(Exception):
@@ -27,11 +28,14 @@ class Service(Thread):
 
     def __init__(self, lcd_service):
         super().__init__()
+        self.name = 'inet'
+
         self.interface = None
         self.addr = ''
         self.lcd_service = lcd_service
 
     def run(self):
+        logger.info('Starting inet service')
         while True:
             # Check that there aren't any low-level network config problems
             ifs = netifaces.interfaces()
@@ -54,6 +58,8 @@ class Service(Thread):
                 primary_if = IF.NONE
 
             if self.addr != primary_addr or self.interface != primary_if:
+                logger.info('Pi changed primary inet if to {}'.format(primary_if))
+                logger.info('Address is now {}'.format(primary_addr or 'nothing'))
                 event = (lcd.Msg.WRITE,
                          lcd.WriteData(row=0, buffer=buff, delay=3))
                 self.lcd_service.interface.put(event)

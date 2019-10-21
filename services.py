@@ -1,20 +1,16 @@
 from enum import Enum
 
-import cli
-import gpio
-import lcd
-import inet
+import pittl.main as main
+import pittl.lcd as lcd
+import pittl.inet as inet
 
 
-class Service(Enum):
-    CLI = 1
-    GPIO = 2
-    LCD = 3
-    INET = 4
+lcd_service = lcd.Service()
+inet_service = inet.Service(lcd_service)
+main_service = main.Service()
 
 
 def start():
-    cli.service.start()
-    gpio.service.start()
-    lcd.service.start()
-    inet.service.start()
+    lcd_service.start()
+    inet_service.start()
+    main_service.start()

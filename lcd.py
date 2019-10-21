@@ -1,11 +1,14 @@
 from collections import namedtuple
 from enum import Enum
+import logging
 from threading import Thread
 import time
 import queue
 
 import pigpio
 from RPLCD.pigpio import CharLCD
+
+from pittl import logger
 
 
 # Constants
@@ -32,6 +35,8 @@ class Service(Thread):
 
     def __init__(self):
         super().__init__()
+        self.name = 'lcd'
+
         self.lcd = CharLCD(pi,
                            pin_rs=15,
                            pin_rw=18,
@@ -51,10 +56,13 @@ class Service(Thread):
         self.interface = queue.Queue()
 
     def run(self):
+        logger.info('Starting lcd driver service')
+
         t0 = time.time()
         while True:
             try:
                 event = self.interface.get_nowait()
+                logger.debug('Received event {}'.format(event))
                 self.dispatch(*event)
             except queue.Empty:
                 pass
@@ -95,7 +103,7 @@ class Service(Thread):
 
             self.buffer_idx[row] = buffer_idx
             self.cycle_idx[row] = cycle_idx
-            
+
             # THIS IS SUPER IMPORTANT
             # The screen really can't write to two rows in
             # sequence that quickly
