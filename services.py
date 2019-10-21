@@ -1,16 +1,17 @@
-from enum import Enum
+import pittl.cli_server
+import pittl.driver
+import pittl.inet
+import pittl.lcd
 
-import pittl.main as main
-import pittl.lcd as lcd
-import pittl.inet as inet
 
-
-lcd_service = lcd.Service()
-inet_service = inet.Service(lcd_service)
-main_service = main.Service()
+lcd_svc = pittl.lcd.Service()
+inet_svc = pittl.inet.Service(lcd_svc)
+driver_svc = pittl.driver.Service(lcd_svc)
+cli_server_svc = pittl.cli_server.Service()
 
 
 def start():
-    lcd_service.start()
-    inet_service.start()
-    main_service.start()
+    lcd_svc.start()
+    inet_svc.start()
+    driver_svc.start()
+    cli_server_svc.start()

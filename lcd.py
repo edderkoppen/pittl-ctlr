@@ -12,7 +12,7 @@ from pittl import logger
 
 
 # Constants
-DELAY = 0.3
+DELAY = 0.6
 CLEAR = ' ' * 16
 
 
@@ -76,7 +76,7 @@ class Service(Thread):
         if msg == Msg.WRITE:
             row = data.row
             buff = data.buffer
-            delay_cycles = round(data.delay / DELAY)
+            delay_cycles = max(round(data.delay / DELAY), 1)
             self.buffer[row] = buff
             self.buffer_idx[row] = 0
             self.cycle_idx[row] = 0
@@ -107,13 +107,13 @@ class Service(Thread):
             # THIS IS SUPER IMPORTANT
             # The screen really can't write to two rows in
             # sequence that quickly
-            time.sleep(0.2)
+            time.sleep(0.3)
 
     def overwrite(self, row, string):
         # The sleeps are hacky cuz the lcd is cheap
         # Precision is not important here
         self.lcd.cursor_pos = (row, 0)
         self.lcd.write_string(CLEAR)
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.lcd.cursor_pos = (row, 0)
         self.lcd.write_string(string)
