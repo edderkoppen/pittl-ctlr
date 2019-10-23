@@ -12,6 +12,16 @@ class Request(IntEnum):
     START = 4
     STOP_SEQUENCE = 5
     STOP = 5
+    QUERY_SEQUENCE_PROGRESS = 6
+    Q_SEQ_PROG = 6
+    QUERY_STAGED_TIMING = 7
+    Q_STG_TIME = 7
+    QUERY_STAGED_SEQUENCE = 8
+    Q_STG_SEQ = 8
+    QUERY_COMMITTED_TIMING = 9
+    Q_CMT_TIME = 9
+    QUERY_COMMITTED_SEQUENCE = 10
+    Q_CMT_SEQ = 10
 
 
 class Response(IntEnum):

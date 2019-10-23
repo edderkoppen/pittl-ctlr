@@ -12,22 +12,11 @@ from pittl import logger
 
 
 # Constants
-DELAY = 0.6
-CLEAR = ' ' * 16
+DELAY = 5
 
 
 # Initialize lcd
 pi = pigpio.pi()
-
-
-# Interface
-WriteData = namedtuple('WriteData', ['row', 'buffer', 'delay'])
-ResetData = namedtuple('ResetData', ['row'])
-
-
-class Msg(Enum):
-    WRITE = 1
-    RESET = 2
 
 
 # Service
@@ -37,83 +26,62 @@ class Service(Thread):
         super().__init__()
         self.name = 'lcd'
 
-        self.lcd = CharLCD(pi,
+        self._lcd = CharLCD(pi,
                            pin_rs=15,
                            pin_rw=18,
                            pin_e=16,
                            pins_data=[21, 22, 23, 24],
                            pin_contrast=17,
                            cols=16, rows=2)
-        self.lcd.cursor_mode = 'hide'
-        self.lcd.clear()
-        self.lcd.home()
 
-        self.buffer = [[''], ['']]
-        self.buffer_idx = [0, 0]
-        self.cycle_idx = [0, 0]
-        self.delay_cycles = [1, 1]
+        self._row = [queue.Queue(), queue.Queue()]
+        self._buffer = [[''], ['']]
+        self._idx = [0, 0]
 
-        self.interface = queue.Queue()
+        self.reset()
 
     def run(self):
         logger.info('Starting lcd driver service')
 
         t0 = time.time()
         while True:
-            try:
-                event = self.interface.get_nowait()
-                logger.debug('Received event {}'.format(event))
-                self.dispatch(*event)
-            except queue.Empty:
-                pass
+            for i in 0, 1:
+                try:
+                    buffer = self._row[i].get_nowait()
+                    logger.debug('Retrieved new buffer {} in row {}'.format(buffer, i))
+                    self._buffer[i] = buffer
+                    self._idx[i] = 0
+                except queue.Empty:
+                    pass
 
             t1 = time.time()
             if t1 - t0 > DELAY:
                 t0 = t1
-                self.update_display()
+                self.reset()
+                time.sleep(0.2)
+                self._update_display()
 
-    def dispatch(self, msg, data):
-        if msg == Msg.WRITE:
-            row = data.row
-            buff = data.buffer
-            delay_cycles = max(round(data.delay / DELAY), 1)
-            self.buffer[row] = buff
-            self.buffer_idx[row] = 0
-            self.cycle_idx[row] = 0
-            self.delay_cycles[row] = delay_cycles
-        elif msg == Msg.RESET:
-            row = data.row
-            self.overwrite(row, '')
-            self.buffer[row] = ['']
-            self.buffer_idx[row] = 0
-            self.cycle_idx[row] = 0
-            self.delay_cycles[row] = 1
+    def _update_display(self):
+        line1 = self._buffer[0][self._idx[0]].ljust(16)
+        line2 = self._buffer[1][self._idx[1]].ljust(16)
 
-    def update_display(self):
-        for row in (0, 1):
-            buffer_idx = self.buffer_idx[row]
-            cycle_idx = self.cycle_idx[row]
-            delay_cycles = self.delay_cycles[row]
-            buff = self.buffer[row]
-
-            cycle_idx = (cycle_idx + 1) % delay_cycles
-            if (cycle_idx == 0) and (delay_cycles != 1):
-                buffer_idx = (buffer_idx + 1) % len(buff)
-                self.overwrite(row, buff[buffer_idx])
-
-            self.buffer_idx[row] = buffer_idx
-            self.cycle_idx[row] = cycle_idx
-
-            # THIS IS SUPER IMPORTANT
-            # The screen really can't write to two rows in
-            # sequence that quickly
-            time.sleep(0.3)
-
-    def overwrite(self, row, string):
-        # The sleeps are hacky cuz the lcd is cheap
-        # Precision is not important here
-        self.lcd.cursor_pos = (row, 0)
-        self.lcd.write_string(CLEAR)
+        self._lcd.home()
+        self._lcd.write_string(line1)
         time.sleep(0.2)
-        self.lcd.cursor_pos = (row, 0)
-        self.lcd.write_string(string)
+        self._lcd.crlf()
+        self._lcd.write_string(line2)
+
+        self._idx[0] = (self._idx[0] + 1) % len(self._buffer[0])
+        self._idx[1] = (self._idx[1] + 1) % len(self._buffer[1])
+
+    def put(self, row, buffer):
+        try:
+            self._row[row].get_nowait()
+        except queue.Empty:
+            pass
+        self._row[row].put_nowait(buffer)
+
+    def reset(self):
+        self._lcd.cursor_mode = 'hide'
+        self._lcd.clear()
+        self._lcd.home()

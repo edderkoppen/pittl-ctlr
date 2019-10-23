@@ -1,14 +1,10 @@
-from collections import namedtuple
-from enum import Enum
 import pickle
-import random
 import socket
 from threading import Thread
 
-import pigpio
-
 from pittl import logger
-from pittl.public import Request
+from pittl.driver import DriverException
+from pittl.public import Response, Request
 
 
 # Constants
@@ -29,16 +25,13 @@ class Service(Thread):
         # Driver mirror
         self.driver_svc = driver_svc
 
-    def send(self, msg):
-        if msg[-1] != '\n':
-            append = '\n'
-        else:
-            append = ''
-        data = (msg + append).encode()
+    def respond(self, msg, data=None):
+        event = (msg, data)
 
+        b = pickle.dumps(event)
         try:
-            self.client.send(data)
-            logger.debug('Sent {}'.format(msg))
+            self.client.send(b)
+            logger.debug('Responded {}'.format(event))
         except socket.error:
             pass
 
@@ -74,20 +67,58 @@ class Service(Thread):
                     event = pickle.loads(data)
                     logger.debug('Received {}'.format(event))
 
-                    self.dispatch(*event)
+                    rsp = self.dispatch(*event)
+                    self.respond(*rsp)
 
                 except pickle.UnpicklingError:
-                    self.send('I couldn\'t read that. '
-                              'Don\'t try and play any nasty tricks.')
+                    logger.error('Deserialization error')
+                    self.respond(Response.FAILURE,
+                                 'Deserialization error')
 
     def dispatch(self, msg, data):
         if msg == Request.STAGE_TIMING:
-            pass
+            try:
+                self.driver_svc.stage_timing(data)
+                return (Response.SUCCESS, None)
+            except DriverException as e:
+                return (Response.FAILURE, e)
         elif msg == Request.STAGE_SEQUENCE_RANDOM:
-            pass
+            try:
+                self.driver_svc.stage_seq_rand()
+                return (Response.SUCCESS, None)
+            except DriverException as e:
+                return (Response.FAILURE, e)
         elif msg == Request.STAGE_SEQUENCE_REGULAR:
-            pass
+            try:
+                self.driver_svc.stage_seq_reg()
+                return (Response.SUCCESS, None)
+            except DriverException as e:
+                return (Response.FAILURE, e)
         elif msg == Request.START_SEQUENCE:
-            pass
+            try:
+                self.driver_svc.start_seq()
+                return (Response.SUCCESS, None)
+            except DriverException as e:
+                return (Response.FAILURE, e)
         elif msg == Request.STOP_SEQUENCE:
-            pass
+            try:
+                self.driver_svc.stop_seq()
+                return (Response.SUCCESS, None)
+            except DriverException as e:
+                return (Response.FAILURE, e)
+        elif msg == Request.QUERY_SEQUENCE_PROGRESS:
+            progress = self.driver_svc.query_progress()
+            return (Response.SUCCESS, progress)
+        elif msg == Request.QUERY_STAGED_TIMING:
+            stg_time = self.driver_svc.staged_timing
+            return (Response.SUCCESS, stg_time)
+        elif msg == Request.QUERY_STAGED_SEQUENCE:
+            stg_seq = self.driver_svc.staged_seq
+            return (Response.SUCCESS, stg_seq)
+        elif msg == Request.QUERY_COMMITTED_TIMING:
+            cmt_time = self.driver_svc.committed_timing
+            return (Response.SUCCESS, cmt_time)
+        elif msg == Request.QUERY_COMMITTED_SEQUENCE:
+            cmt_seq = self.driver_svc.committed_seq
+        else:
+            return (Response.FAILURE, 'Unkown request')

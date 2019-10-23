@@ -6,7 +6,6 @@ import time
 import netifaces
 
 from pittl import logger
-import pittl.lcd as lcd
 
 
 class InetError(Exception):
@@ -30,9 +29,9 @@ class Service(Thread):
         super().__init__()
         self.name = 'inet'
 
-        self.interface = None
-        self.addr = ''
-        self.lcd_svc = lcd_svc
+        self._if = None
+        self._addr = ''
+        self._lcd_svc = lcd_svc
 
     def run(self):
         logger.info('Starting inet service')
@@ -48,24 +47,24 @@ class Service(Thread):
             primary_addr = eth_addr or wlan_addr
 
             if eth_addr:
-                buff = ['using ethernet', eth_addr]
+                buffer = ['using ethernet', eth_addr]
                 primary_if = IF.ETH
             elif wlan_addr:
-                buff = ['using wifi', wlan_addr]
+                buffer = ['using wifi', wlan_addr]
                 primary_if = IF.WLAN
             else:
-                buff = ['no internet :(']
+                buffer = ['no internet :(']
                 primary_if = IF.NONE
 
-            if self.addr != primary_addr or self.interface != primary_if:
-                logger.info('Pi changed primary inet if to {}'.format(primary_if))
-                logger.info('Address is now {}'.format(primary_addr or 'nothing'))
-                event = (lcd.Msg.WRITE,
-                         lcd.WriteData(row=0, buffer=buff, delay=3))
-                self.lcd_svc.interface.put(event)
+            if self._addr != primary_addr or self._if != primary_if:
+                logger.info('Pi changed primary '
+                            'inet if to {}'.format(primary_if))
+                logger.info('Address is now '
+                            '{}'.format(primary_addr or 'nothing'))
+                self._lcd_svc.put(0, buffer)
 
-                self.addr = primary_addr
-                self.interface = primary_if
+                self._addr = primary_addr
+                self._if = primary_if
 
             time.sleep(DELAY)
 

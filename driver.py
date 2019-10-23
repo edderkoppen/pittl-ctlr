@@ -1,6 +1,5 @@
 from collections import namedtuple
 from enum import Enum
-import queue
 import random
 from threading import Thread
 import time
@@ -11,11 +10,17 @@ from pittl import logger
 import pittl.lcd as lcd
 
 
+# Exceptions
+class DriverException(Exception):
+    pass
+
+
 # Constants
 ON = 0
 OFF = 1
 PIN = 14
 MICROSECONDS = 1e6
+DISP_DELAY = 10
 
 
 # Low-level routines
@@ -49,9 +54,9 @@ def waveform(seq, res):
     wf = []
     for i in seq:
         if i == ON:
-            p = pigpio.pulse(1 << PIN, 0, int(res * MICROSECONDS))
-        else:
             p = pigpio.pulse(0, 1 << PIN, int(res * MICROSECONDS))
+        else:
+            p = pigpio.pulse(1 << PIN, 0, int(res * MICROSECONDS))
         wf.append(p)
     return wf
 
@@ -97,15 +102,17 @@ class Msg(Enum):
 # Service
 class Service(Thread):
 
-    def __init__(self):
+    def __init__(self, lcd_svc):
         super().__init__()
         self.name = "driver"
 
-        self.interface = queue.Queue()
+        self.lcd_svc = lcd_svc
+        self.last_disp = 0
 
-        # PIN
-        self.commited_timing = None
-        self.commited_seq = None
+        self.last_busy = 0
+
+        self.committed_timing = None
+        self.committed_seq = None
 
         self.commit_wid = None
         self.commit_time = None
@@ -114,96 +121,84 @@ class Service(Thread):
         self.staged_seq = None
 
     def run(self):
-        logger.info('Starting gpio management service')
+        logger.info('Starting pigpio sync service')
 
-        # Interface
         while True:
-            try:
-                event = self.interface.get_nowait()
-                logger.debug('Reveived even {}'.format(event))
-                self.dispatch(*event)
-            except queue.Empty:
-                pass
-
-        # Sync
-        self.sync_to_pigpio()
-
-    def dispatch(self, msg, data):
-        if msg == Msg.STAGE_TIMING:
-            self.stage_timing(data)
-        elif msg == Msg.STAGE_SEQ_RAND:
-            self.stage_seq_rand()
-        elif msg == Msg.STAGE_SEQ_REG:
-            self.stage_seq_reg()
-        elif msg == Msg.START_SEQ:
-            self.start_seq()
-        elif msg == Msg.STOP_SEQ:
-            self.stop_seq()
-        elif msg == Msg.QUERY_STAGED_TIME:
-            pass
-        elif msg == Msg.QUERY_STAGED_SEQ:
-            pass
-        elif msg == Msg.QUERY_COMMIT_TIME:
-            pass
-        elif msg == Msg.QUERY_COMMIT_SEQ:
-            pass
-        elif msg == Msg.QUERY_PROG:
-            pass
+            # Sync
+            self.sync_to_pigpio()
 
     def stage_timing(self, data):
+        if type(data) != Timing:
+            raise DriverException('Object to be staged was not timing')
         self.staged_timing = data
         self.staged_seq = None
-        self.send('Timing staged')
 
     def stage_seq_rand(self):
-        self.staged_seq = random_sequence(self.timing.digital.total,
-                                          self.timing.digital.exposure)
-        self.send('Random sequence staged')
+        if self.staged_timing is None:
+            raise DriverException('No timing staged')
+        self.staged_seq = random_sequence(self.staged_timing.digital.total,
+                                          self.staged_timing.digital.exposure)
 
     def stage_seq_reg(self):
-        self.staged_seq = regular_sequence(self.timing.digital.total,
-                                           self.timing.digital.exposure)
-        self.send('Regular sequence staged')
+        if self.staged_timing is None:
+            raise DriverException('No timing staged')
+        self.staged_seq = regular_sequence(self.staged_timing.digital.total,
+                                           self.staged_timing.digital.exposure)
 
     def start_seq(self):
+        if self.staged_timing is None:
+            raise DriverException('No timing staged')
+        if self.staged_seq is None:
+            raise DriverException('No sequence staged')
         if self.commit_wid is not None:
-            self.send('Sequence currently in progress')
+            raise DriverException('Sequence already in progress')
 
-        self.commited_timing = self.staged_timing
-        self.commited_seq = self.staged_seq
+        self.committed_timing = self.staged_timing
+        self.committed_seq = self.staged_seq
 
-        wf = waveform(self.commited_seq,
-                      self.commited_timing.resolution)
+        wf = waveform(self.committed_seq,
+                      self.committed_timing.resolution)
 
         pi.wave_add_generic(wf)
         self.commit_wid = pi.wave_create()
 
-        self.commit_start = time.time()
-        pi.wave_send_once(self.wid)
-
-        self.send('Sequence started')
+        self.commit_time = time.time()
+        pi.wave_send_once(self.commit_wid)
 
     def stop_seq(self):
         pi.wave_tx_stop()
         pi.write(PIN, OFF)
-        pi.wave_delete(self.commit_wid)
+        if self.commit_wid is not None:
+            pi.wave_delete(self.commit_wid)
+            self.commit_wid = None
 
-        self.commited_timing = None
-        self.commited_seq = None
-        self.commit_start = None
-        self.commit_wid = None
-
-        self.send('Sequence stopped')
+        self.committed_timing = None
+        self.committed_seq = None
+        self.commit_time = None
 
     def query_progress(self):
-        if self.commit_start:
-            t = time.time() - self.commit_start
-            return max(t / self.commit_timing.adjusted.total, 1.0)
+        if self.commit_time is not None:
+            t = time.time() - self.commit_time
+            return min(t / self.committed_timing.adjusted.total, 1.0)
         else:
             return 0.0
 
     def sync_to_pigpio(self):
-        if self.query_progress() == 1:
-            self.stop_seq()
-        elif pi.wave_tx_busy():
+        prog = self.query_progress()
+
+        t = time.time()
+        if t - self.last_disp > DISP_DELAY:
+            self.last_disp = t
+            prog_str = str(prog * 100)[1:8] + '%'
+            buffer = [prog_str]
+            self.lcd_svc.put(1, [prog_str])
+
+        curr_busy = pi.wave_tx_busy()
+        if curr_busy != self.last_busy:
+            logger.info('Detected pigpio change {}->{}'.format(self.last_busy,
+                                                               curr_busy))
+            self.last_busy = curr_busy
+            if not curr_busy:
+                self.stop_seq()
+        elif prog == 1:
             self.stop_seq()
