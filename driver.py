@@ -1,5 +1,4 @@
 from collections import namedtuple
-from enum import Enum
 import random
 from threading import Thread
 import time
@@ -7,7 +6,6 @@ import time
 import pigpio
 
 from pittl import logger
-import pittl.lcd as lcd
 
 
 # Exceptions
@@ -15,13 +13,22 @@ class DriverException(Exception):
     pass
 
 
-# Constants
+# Some more constants
+PIN = 14
 ON = 0
 OFF = 1
-PIN = 14
-MICROSECONDS = 1e6
-DISP_DELAY = 10
+MICROS = 1e6
+DISP_DELAY = 4
 
+
+# Initialize the pigpio client
+pi = pigpio.pi()
+pi.set_mode(PIN, pigpio.OUTPUT)
+pi.write(PIN, OFF)
+
+
+MAX_MICROS = pi.wave_get_max_micros()
+MAX_PULSES = 4000
 
 # Low-level routines
 def regular_sequence(n, m):
@@ -54,11 +61,36 @@ def waveform(seq, res):
     wf = []
     for i in seq:
         if i == ON:
-            p = pigpio.pulse(0, 1 << PIN, int(res * MICROSECONDS))
+            p = pigpio.pulse(0, 1 << PIN, int(res * MICROS))
         else:
-            p = pigpio.pulse(1 << PIN, 0, int(res * MICROSECONDS))
+            p = pigpio.pulse(1 << PIN, 0, int(res * MICROS))
         wf.append(p)
     return wf
+
+
+def waveform_chain(seq, res):
+    seq_len = len(seq)
+    seq_micros = seq_len * res * MICROS
+    # chain_len = round(seq_micros / FCN_MAX_MICROS - 0.5)
+    chain_len = round(seq_len / MAX_PULSES - 0.5)
+    try:
+        wf_len = round(seq_len / chain_len - 0.5)
+        extra_len = seq_len % wf_len
+    except ZeroDivisionError:
+        wf_len = 0
+        extra_len = seq_len
+
+    chain = []
+    for i in range(chain_len):
+        start_idx = wf_len * i
+        stop_idx = start_idx + wf_len
+        chain.append(waveform(seq[start_idx:stop_idx], res))
+
+    if extra_len:
+        start_idx = wf_len * chain_len
+        chain.append(waveform(seq[start_idx:-1], res))
+
+    return chain
 
 
 # Data structures
@@ -88,17 +120,6 @@ class Timing:
                            self.digital)
 
 
-# Initialize the pigpio client
-pi = pigpio.pi()
-pi.set_mode(PIN, pigpio.OUTPUT)
-pi.write(PIN, OFF)
-
-
-# Interface
-class Msg(Enum):
-    pass
-
-
 # Service
 class Service(Thread):
 
@@ -106,99 +127,132 @@ class Service(Thread):
         super().__init__()
         self.name = "driver"
 
-        self.lcd_svc = lcd_svc
-        self.last_disp = 0
-
-        self.last_busy = 0
-
-        self.committed_timing = None
-        self.committed_seq = None
-
-        self.commit_wid = None
-        self.commit_time = None
+        self._lcd_svc = lcd_svc
+        self._last_disp = 0
 
         self.staged_timing = None
         self.staged_seq = None
 
+        self.committed_timing = None
+        self.committed_seq = None
+
+        self._chain = None
+        self._wid = None
+        self._chain_idx = 0
+        self._chain_start = None
+        self._wf_start = None
+
+        # In case service is restarted
+        # This shouldn't be happening, by the way
+        self.stop_seq()
+
     def run(self):
-        logger.info('Starting pigpio sync service')
+        logger.info('Starting pigpio driver service')
 
         while True:
-            # Sync
-            self.sync_to_pigpio()
+            self._display()
+
+            if self.wf_progress() == 1.0:
+                if self._chain_idx < len(self._chain) - 1:
+                    self._stop_wf()
+                    self._chain_idx += 1
+                    self._start_wf()
+                else:
+                    self.stop_seq()
 
     def stage_timing(self, data):
         if type(data) != Timing:
             raise DriverException('Object to be staged was not timing')
         self.staged_timing = data
         self.staged_seq = None
+        logger.info('Staged timing {} '
+                    '(and reset sequence)'.format(self.staged_timing))
 
     def stage_seq_rand(self):
         if self.staged_timing is None:
             raise DriverException('No timing staged')
         self.staged_seq = random_sequence(self.staged_timing.digital.total,
                                           self.staged_timing.digital.exposure)
+        logger.info('Staged random sequence')
 
     def stage_seq_reg(self):
         if self.staged_timing is None:
             raise DriverException('No timing staged')
         self.staged_seq = regular_sequence(self.staged_timing.digital.total,
                                            self.staged_timing.digital.exposure)
+        logger.info('Staged regular sequence')
+
+    def _stop_wf(self):
+        pi.wave_tx_stop()
+        if self._wid is not None:
+            logger.info('Stopping waveform {}'.format(self._chain_idx))
+
+            pi.wave_delete(self._wid)
+            self._wid = None
+
+    def _start_wf(self):
+        self._stop_wf()
+
+        logger.info('Starting waveform {}'.format(self._chain_idx))
+
+        pi.wave_add_generic(self._chain[self._chain_idx])
+        self._wid = pi.wave_create()
+        self._wf_start = time.time()
+        pi.wave_send_once(self._wid)
+
+    def stop_seq(self):
+        self._stop_wf()
+        pi.write(PIN, OFF)
+        self.committed_timing = None
+        self.committed_seq = None
+
+        self._chain = None
+        self._chain_idx = None
+        self._chain_start = None
+        self._wf_start = None
 
     def start_seq(self):
         if self.staged_timing is None:
             raise DriverException('No timing staged')
         if self.staged_seq is None:
             raise DriverException('No sequence staged')
-        if self.commit_wid is not None:
+        if self._chain is not None:
             raise DriverException('Sequence already in progress')
+        logger.info('Committing and starting sequence')
 
         self.committed_timing = self.staged_timing
         self.committed_seq = self.staged_seq
 
-        wf = waveform(self.committed_seq,
-                      self.committed_timing.resolution)
+        self._chain = waveform_chain(self.committed_seq,
+                                     self.committed_timing.resolution)
+        logger.debug('Sequence converted into '
+                     'chain with {} waveform(s)'.format(len(self._chain)))
 
-        pi.wave_add_generic(wf)
-        self.commit_wid = pi.wave_create()
+        self._chain_start = time.time()
+        self._chain_idx = 0
+        self._start_wf()
 
-        self.commit_time = time.time()
-        pi.wave_send_once(self.commit_wid)
-
-    def stop_seq(self):
-        pi.wave_tx_stop()
-        pi.write(PIN, OFF)
-        if self.commit_wid is not None:
-            pi.wave_delete(self.commit_wid)
-            self.commit_wid = None
-
-        self.committed_timing = None
-        self.committed_seq = None
-        self.commit_time = None
-
-    def query_progress(self):
-        if self.commit_time is not None:
-            t = time.time() - self.commit_time
+    def chain_progress(self):
+        if self._chain_start is not None:
+            t = time.time() - self._chain_start
             return min(t / self.committed_timing.adjusted.total, 1.0)
         else:
             return 0.0
 
-    def sync_to_pigpio(self):
-        prog = self.query_progress()
+    def wf_progress(self):
+        if self._wf_start is not None:
+            t = time.time() - self._wf_start
+            wf_total = len(self._chain[self._chain_idx]) * \
+                self.committed_timing.resolution
+            return min(t / wf_total, 1.0)
+        else:
+            return 0.0
 
+    def _display(self):
         t = time.time()
-        if t - self.last_disp > DISP_DELAY:
-            self.last_disp = t
-            prog_str = str(prog * 100)[1:8] + '%'
-            buffer = [prog_str]
-            self.lcd_svc.put(1, [prog_str])
+        if t - self._last_disp > DISP_DELAY:
+            self._last_disp = t
 
-        curr_busy = pi.wave_tx_busy()
-        if curr_busy != self.last_busy:
-            logger.info('Detected pigpio change {}->{}'.format(self.last_busy,
-                                                               curr_busy))
-            self.last_busy = curr_busy
-            if not curr_busy:
-                self.stop_seq()
-        elif prog == 1:
-            self.stop_seq()
+            prog = self.chain_progress() * 100
+            buffer = [f'Expt @ {prog:.3}%']
+            self._lcd_svc.put(1, buffer)

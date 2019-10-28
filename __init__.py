@@ -4,7 +4,7 @@ import sys
 
 # Logging config
 logger = logging.getLogger('pittl')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 sh = logging.StreamHandler(sys.stdout)
 

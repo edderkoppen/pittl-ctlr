@@ -65,10 +65,12 @@ class Service(Thread):
         line1 = self._buffer[0][self._idx[0]].ljust(16)
         line2 = self._buffer[1][self._idx[1]].ljust(16)
 
-        self._lcd.home()
+        self.reset()
+        time.sleep(0.5)
         self._lcd.write_string(line1)
-        time.sleep(0.2)
+        time.sleep(0.5)
         self._lcd.crlf()
+        time.sleep(0.5)
         self._lcd.write_string(line2)
 
         self._idx[0] = (self._idx[0] + 1) % len(self._buffer[0])
