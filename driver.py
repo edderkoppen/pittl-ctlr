@@ -30,6 +30,7 @@ pi.write(PIN, OFF)
 MAX_MICROS = pi.wave_get_max_micros()
 MAX_PULSES = 4000
 
+
 # Low-level routines
 def regular_sequence(n, m):
     f = round(n / m - 0.5)
@@ -57,18 +58,7 @@ def random_sequence(n, m):
     return seq
 
 
-def waveform(seq, res):
-    wf = []
-    for i in seq:
-        if i == ON:
-            p = pigpio.pulse(0, 1 << PIN, int(res * MICROS))
-        else:
-            p = pigpio.pulse(1 << PIN, 0, int(res * MICROS))
-        wf.append(p)
-    return wf
-
-
-def waveform_chain(seq, res):
+def split(seq, res):
     seq_len = len(seq)
     seq_micros = seq_len * res * MICROS
     # chain_len = round(seq_micros / FCN_MAX_MICROS - 0.5)
@@ -84,13 +74,24 @@ def waveform_chain(seq, res):
     for i in range(chain_len):
         start_idx = wf_len * i
         stop_idx = start_idx + wf_len
-        chain.append(waveform(seq[start_idx:stop_idx], res))
+        chain.append(seq[start_idx:stop_idx])
 
     if extra_len:
         start_idx = wf_len * chain_len
-        chain.append(waveform(seq[start_idx:-1], res))
+        chain.append(seq[start_idx:-1])
 
     return chain
+
+
+def waveform(seq, res):
+    wf = []
+    for i in seq:
+        if i == ON:
+            p = pigpio.pulse(0, 1 << PIN, int(res * MICROS))
+        else:
+            p = pigpio.pulse(1 << PIN, 0, int(res * MICROS))
+        wf.append(p)
+    return wf
 
 
 # Data structures
@@ -137,10 +138,12 @@ class Service(Thread):
         self.committed_seq = None
 
         self._chain = None
-        self._wid = None
         self._chain_idx = 0
         self._chain_start = None
+
+        self._wid = None
         self._wf_start = None
+        self._staged_wf = None
 
         # In case service is restarted
         # This shouldn't be happening, by the way
@@ -152,18 +155,22 @@ class Service(Thread):
         while True:
             self._display()
 
-            if self.wf_progress() == 1.0:
-                if self._chain_idx < len(self._chain) - 1:
+            if self._chain and self._chain_idx < len(self._chain) - 1:
+                if self._staged_wf is None and self.wf_progress() >= 0.5:
+                    self._stage_wf(self._chain_idx + 1)
+                elif self.wf_progress() == 1.0:
                     self._stop_wf()
                     self._chain_idx += 1
                     self._start_wf()
-                else:
-                    self.stop_seq()
+            elif self.wf_progress() == 1.0:
+                self.stop_seq()
 
     def stage_timing(self, data):
-        if type(data) != Timing:
-            raise DriverException('Object to be staged was not timing')
-        self.staged_timing = data
+        try:
+            self.staged_timing = Timing(*data)
+        except:
+            raise DriverException('Object to be staged could '
+                                  'not be interpreted as timing')
         self.staged_seq = None
         logger.info('Staged timing {} '
                     '(and reset sequence)'.format(self.staged_timing))
@@ -182,6 +189,12 @@ class Service(Thread):
                                            self.staged_timing.digital.exposure)
         logger.info('Staged regular sequence')
 
+    def _stage_wf(self, idx):
+        logger.info('Staging waveform {}'.format(idx))
+
+        self._staged_wf = waveform(self._chain[idx],
+                                   self.committed_timing.resolution)
+
     def _stop_wf(self):
         pi.wave_tx_stop()
         if self._wid is not None:
@@ -195,10 +208,14 @@ class Service(Thread):
 
         logger.info('Starting waveform {}'.format(self._chain_idx))
 
-        pi.wave_add_generic(self._chain[self._chain_idx])
-        self._wid = pi.wave_create()
-        self._wf_start = time.time()
-        pi.wave_send_once(self._wid)
+        if self._staged_wf is not None:
+            pi.wave_add_generic(self._staged_wf)
+            self._wid = pi.wave_create()
+            self._wf_start = time.time()
+            pi.wave_send_once(self._wid)
+            self._staged_wf = None
+        else:
+            raise DriverException('No staged waveform found.')
 
     def stop_seq(self):
         self._stop_wf()
@@ -209,6 +226,7 @@ class Service(Thread):
         self._chain = None
         self._chain_idx = None
         self._chain_start = None
+        self._staged_wf = None
         self._wf_start = None
 
     def start_seq(self):
@@ -223,13 +241,14 @@ class Service(Thread):
         self.committed_timing = self.staged_timing
         self.committed_seq = self.staged_seq
 
-        self._chain = waveform_chain(self.committed_seq,
-                                     self.committed_timing.resolution)
-        logger.debug('Sequence converted into '
-                     'chain with {} waveform(s)'.format(len(self._chain)))
+        self._chain = split(self.committed_seq,
+                            self.committed_timing.resolution)
+        logger.debug('Sequence split into '
+                     'chain with {} sub-sequence(s)'.format(len(self._chain)))
 
         self._chain_start = time.time()
         self._chain_idx = 0
+        self._stage_wf(self._chain_idx)
         self._start_wf()
 
     def chain_progress(self):
@@ -254,5 +273,5 @@ class Service(Thread):
             self._last_disp = t
 
             prog = self.chain_progress() * 100
-            buffer = [f'Expt @ {prog:.3}%']
+            buffer = ['Expt @ {:.3}%'.format(prog)]
             self._lcd_svc.put(1, buffer)

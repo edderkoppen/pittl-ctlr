@@ -3,9 +3,13 @@ import socket
 from threading import Thread
 
 from pittl import logger
-from pittl.cli import HOST, PORT
+from pittl.cli import PORT
 from pittl.driver import DriverException
 from pittl.public import Response, Request
+
+
+# Constants
+HOST = '0.0.0.0'
 
 
 # Service
