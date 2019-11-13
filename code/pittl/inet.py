@@ -5,7 +5,7 @@ import time
 
 import netifaces
 
-from pittl.ctlr import logger
+from pittl import logger
 
 
 class InetError(Exception):

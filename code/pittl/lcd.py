@@ -8,7 +8,7 @@ import queue
 import pigpio
 from RPLCD.pigpio import CharLCD
 
-from pittl.ctlr import logger
+from pittl import logger
 
 
 # Constants

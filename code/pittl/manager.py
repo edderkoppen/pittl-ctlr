@@ -2,8 +2,8 @@ import pickle
 import socket
 from threading import Thread
 
-from pittl.ctlr import logger
-from pittl.ctlr.driver import DriverException
+from pittl import logger
+from pittl.driver import DriverException
 from pittl.shared import PORT, Response, Request
 
 

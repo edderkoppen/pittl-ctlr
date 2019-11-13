@@ -5,7 +5,7 @@ import time
 
 import pigpio
 
-from pittl.ctlr import logger
+from pittl import logger
 
 
 # Exceptions
