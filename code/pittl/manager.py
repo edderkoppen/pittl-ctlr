@@ -38,23 +38,22 @@ class Service(Thread):
 
     def stream_response(self, data):
         b = pickle.dumps(data)
-        l = len(b)
-        n = floor(l / BLOCK_SZ) + int((l % BLOCK_SZ) > 0)
+        m = len(b)
+        n = round(m / BLOCK_SZ - 0.5) + int((m % BLOCK_SZ) > 0)
 
         # Header
         hdr = pickle.dumps((Response.STREAM, n))
         self.client.send(hdr)
 
         # Body
-        idx = 0
         try:
-            while idx < l:
-                self.client.send(b[idx:min(idx + BLOCK_SZ, l)])
+            idx = 0
+            while idx < m:
+                self.client.send(b[idx:min(idx + BLOCK_SZ, m)])
                 idx += BLOCK_SZ
             return (Response.SUCCESS, None)
-        except socket.error
+        except socket.error:
             return (Response.FAILURE, None)
-
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -111,7 +110,7 @@ class Service(Thread):
 
     def query_sequence(self):
         s = {'sequence': {'staged': self.driver_svc.staged_seq,
-                         {'committed', self.driver_svc.committed_seq}}
+                          'committed': self.driver_svc.committed_seq}}
         return self.stream_response(s)
 
     def query_program(self):
