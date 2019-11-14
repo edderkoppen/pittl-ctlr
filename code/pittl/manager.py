@@ -37,11 +37,15 @@ class Service(Thread):
             pass
 
     def stream_response(self, data):
-        # Header
-        self.client.send(pickle.dumps((Response.BEGIN, None)))
-
         b = pickle.dumps(data)
         l = len(b)
+        n = floor(l / BLOCK_SZ) + int((l % BLOCK_SZ) > 0)
+
+        # Header
+        hdr = pickle.dumps((Response.STREAM, n))
+        self.client.send(hdr)
+
+        # Body
         idx = 0
         try:
             while idx < l:
@@ -49,10 +53,7 @@ class Service(Thread):
                 idx += BLOCK_SZ
             return (Response.SUCCESS, None)
         except socket.error
-            try:
-                return (Response.FAILURE, None)
-            except socket.error:
-                pass
+            return (Response.FAILURE, None)
 
 
     def run(self):
