@@ -36,6 +36,25 @@ class Service(Thread):
         except socket.error:
             pass
 
+    def stream_response(self, data):
+        # Header
+        self.client.send(pickle.dumps((Response.BEGIN, None)))
+
+        b = pickle.dumps(data)
+        l = len(b)
+        idx = 0
+        try:
+            while idx < l:
+                self.client.send(b[idx:min(idx + BLOCK_SZ, l)])
+                idx += BLOCK_SZ
+            return (Response.SUCCESS, None)
+        except socket.error
+            try:
+                return (Response.FAILURE, None)
+            except socket.error:
+                pass
+
+
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind((HOST, PORT))
@@ -90,18 +109,9 @@ class Service(Thread):
         return (Response.SUCCESS, t)
 
     def query_sequence(self):
-        s = ('staged', self.driver_svc.staged_seq)
-        c = ('committed', self.driver_svc.committed_seq)
-        for key, seq in s, c:
-            # Begin streaming
-            self.respond(Response.BEGIN, key)
-            idx = 0
-            l = len(seq)
-            while idx <= l:
-                self.respond(Response.DATA,
-                             seq[idx:idx + BLOCK_SZ])
-                idx += BLOCK_SZ
-        return (Response.SUCCESS, None)
+        s = {'sequence': {'staged': self.driver_svc.staged_seq,
+                         {'committed', self.driver_svc.committed_seq}}
+        return self.stream_response(s)
 
     def query_program(self):
         progress = self.driver_svc.chain_progress()
@@ -116,9 +126,9 @@ class Service(Thread):
         if started is not None:
             started = str(datetime.fromtimestamp(started))
 
-        d = {'experiment': {'progress': progress,
-                            'eta': eta,
-                            'started': started}}
+        d = {'program': {'progress': progress,
+                         'eta': eta,
+                         'started': started}}
         return (Response.SUCCESS, d)
 
     def dispatch(self, msg, data):
