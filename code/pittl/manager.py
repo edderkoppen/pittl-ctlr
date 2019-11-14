@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import pickle
 import socket
 from threading import Thread
@@ -106,17 +107,39 @@ class Service(Thread):
             except DriverException as e:
                 return (Response.FAILURE, e)
         elif msg == Request.QUERY_TIMING:
-            t = {'timing': {'staged': self.driver_svc.staged_timing,
-                            'committed': self.driver_svc.committed_timing}}
+            if self.driver_svc.staged_timing is None:
+                s = {}
+            else:
+                s = self.driver_svc.staged_timing.to_dict()
+            if self.driver_svc.committed_timing is None:
+                t = {}
+            else:
+                t = self.driver_svc.committed_timing.to_dict()
+
+            t = {'timing': {'staged': s, 'committed': c}}
             return (Response.SUCCESS, t)
         elif msg == Request.QUERY_SEQUENCE:
+            # TODO: Not active right now
             s = {'sequence': {'staged': self.driver_svc.staged_seq,
                               'committed': self.driver_svc.committed_seq}}
             return (Response.SUCCESS, s)
         elif msg == Request.QUERY_EXPERIMENT:
-            d = {'experiment': {'started': self.driver_svc.started,
-                                'eta': self.driver_svc.eta(),
-                                'progress': self.driver_svc.chain_progress()}}
+            progress = self.driver_svc.chain_progress()
+            if progress is not None:
+                progress = round(progress * 1000) / 1000
+                experiment['progress'] = progress
+
+            eta = self.driver_svc.eta()
+            if eta is not None:
+                eta = str(timedelta(seconds=eta))
+                experiment['eta'] = eta
+
+            started = self.driver_svc.started
+            if started is not None:
+                started = str(datetime.fromtimestamp(started))
+                experiment['started'] = started
+
+            d = {'experiment': experiment}
             return (Response.SUCCESS, d)
         else:
             return (Response.FAILURE, 'Unknown request')
