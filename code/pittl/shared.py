@@ -26,3 +26,5 @@ class Request(IntEnum):
 class Response(IntEnum):
     SUCCESS = 1
     FAILURE = 2
+    BEGIN = 3
+    DATA = 4

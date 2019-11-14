@@ -307,5 +307,5 @@ class Service(Thread):
             self._last_disp = t
 
             prog = self.chain_progress() * 100
-            buffer = ['Expt @ {:.3}%'.format(prog)]
+            buffer = ['Prog @ {:.3}%'.format(prog)]
             self._lcd_svc.put(1, buffer)

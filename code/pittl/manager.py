@@ -10,6 +10,7 @@ from pittl.shared import PORT, Response, Request
 
 # Constants
 HOST = '0.0.0.0'
+BLOCK_SZ = 1024
 
 
 # Service
@@ -75,6 +76,51 @@ class Service(Thread):
                     self.respond(Response.FAILURE,
                                  'Deserialization error')
 
+    def query_timing(self):
+        if self.driver_svc.staged_timing is None:
+            s = {}
+        else:
+            s = self.driver_svc.staged_timing.to_dict()
+        if self.driver_svc.committed_timing is None:
+            c = {}
+        else:
+            c = self.driver_svc.committed_timing.to_dict()
+
+        t = {'timing': {'staged': s, 'committed': c}}
+        return (Response.SUCCESS, t)
+
+    def query_sequence(self):
+        s = ('staged', self.driver_svc.staged_seq)
+        c = ('committed', self.driver_svc.committed_seq)
+        for key, seq in s, c:
+            # Begin streaming
+            self.respond(Response.BEGIN, key)
+            idx = 0
+            l = len(seq)
+            while idx <= l:
+                self.respond(Response.DATA,
+                             seq[idx:idx + BLOCK_SZ])
+                idx += BLOCK_SZ
+        return (Response.SUCCESS, None)
+
+    def query_program(self):
+        progress = self.driver_svc.chain_progress()
+        if progress is not None:
+            progress = str(round(progress * 1000) / 10) + '%'
+
+        eta = self.driver_svc.eta()
+        if eta is not None:
+            eta = str(timedelta(seconds=eta))
+
+        started = self.driver_svc.started
+        if started is not None:
+            started = str(datetime.fromtimestamp(started))
+
+        d = {'experiment': {'progress': progress,
+                            'eta': eta,
+                            'started': started}}
+        return (Response.SUCCESS, d)
+
     def dispatch(self, msg, data):
         if msg == Request.STAGE_TIMING:
             try:
@@ -107,38 +153,10 @@ class Service(Thread):
             except DriverException as e:
                 return (Response.FAILURE, str(e))
         elif msg == Request.QUERY_TIMING:
-            if self.driver_svc.staged_timing is None:
-                s = {}
-            else:
-                s = self.driver_svc.staged_timing.to_dict()
-            if self.driver_svc.committed_timing is None:
-                c = {}
-            else:
-                c = self.driver_svc.committed_timing.to_dict()
-
-            t = {'timing': {'staged': s, 'committed': c}}
-            return (Response.SUCCESS, t)
+            return self.query_timing()
         elif msg == Request.QUERY_SEQUENCE:
-            # TODO: Not active right now
-            s = {'sequence': {'staged': self.driver_svc.staged_seq,
-                              'committed': self.driver_svc.committed_seq}}
-            return (Response.SUCCESS, s)
+            return self.query_sequence()
         elif msg == Request.QUERY_PROGRAM:
-            progress = self.driver_svc.chain_progress()
-            if progress is not None:
-                progress = str(round(progress * 1000) / 10) + '%'
-
-            eta = self.driver_svc.eta()
-            if eta is not None:
-                eta = str(timedelta(seconds=eta))
-
-            started = self.driver_svc.started
-            if started is not None:
-                started = str(datetime.fromtimestamp(started))
-
-            d = {'experiment': {'progress': progress,
-                                'eta': eta,
-                                'started': started}}
-            return (Response.SUCCESS, d)
+            return self.query_program()
         else:
             return (Response.FAILURE, 'Unknown request')
