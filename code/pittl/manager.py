@@ -81,40 +81,40 @@ class Service(Thread):
                 self.driver_svc.stage_timing(data)
                 return (Response.SUCCESS, None)
             except DriverException as e:
-                return (Response.FAILURE, e)
+                return (Response.FAILURE, str(e))
         elif msg == Request.STAGE_SEQUENCE_RANDOM:
             try:
                 self.driver_svc.stage_seq_rand()
                 return (Response.SUCCESS, None)
             except DriverException as e:
-                return (Response.FAILURE, e)
+                return (Response.FAILURE, str(e))
         elif msg == Request.STAGE_SEQUENCE_REGULAR:
             try:
                 self.driver_svc.stage_seq_reg()
                 return (Response.SUCCESS, None)
             except DriverException as e:
-                return (Response.FAILURE, e)
+                return (Response.FAILURE, str(e))
         elif msg == Request.START_SEQUENCE:
             try:
                 self.driver_svc.start_seq()
                 return (Response.SUCCESS, None)
             except DriverException as e:
-                return (Response.FAILURE, e)
+                return (Response.FAILURE, str(e))
         elif msg == Request.STOP_SEQUENCE:
             try:
                 self.driver_svc.stop_seq()
                 return (Response.SUCCESS, None)
             except DriverException as e:
-                return (Response.FAILURE, e)
+                return (Response.FAILURE, str(e))
         elif msg == Request.QUERY_TIMING:
             if self.driver_svc.staged_timing is None:
                 s = {}
             else:
                 s = self.driver_svc.staged_timing.to_dict()
             if self.driver_svc.committed_timing is None:
-                t = {}
+                c = {}
             else:
-                t = self.driver_svc.committed_timing.to_dict()
+                c = self.driver_svc.committed_timing.to_dict()
 
             t = {'timing': {'staged': s, 'committed': c}}
             return (Response.SUCCESS, t)
@@ -123,23 +123,22 @@ class Service(Thread):
             s = {'sequence': {'staged': self.driver_svc.staged_seq,
                               'committed': self.driver_svc.committed_seq}}
             return (Response.SUCCESS, s)
-        elif msg == Request.QUERY_EXPERIMENT:
+        elif msg == Request.QUERY_PROGRAM:
             progress = self.driver_svc.chain_progress()
             if progress is not None:
-                progress = round(progress * 1000) / 1000
-                experiment['progress'] = progress
+                progress = str(round(progress * 1000) / 10) + '%'
 
             eta = self.driver_svc.eta()
             if eta is not None:
                 eta = str(timedelta(seconds=eta))
-                experiment['eta'] = eta
 
             started = self.driver_svc.started
             if started is not None:
                 started = str(datetime.fromtimestamp(started))
-                experiment['started'] = started
 
-            d = {'experiment': experiment}
+            d = {'experiment': {'progress': progress,
+                                'eta': eta,
+                                'started': started}}
             return (Response.SUCCESS, d)
         else:
             return (Response.FAILURE, 'Unknown request')

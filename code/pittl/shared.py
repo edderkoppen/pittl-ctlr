@@ -19,8 +19,8 @@ class Request(IntEnum):
     Q_TIME = 6
     QUERY_SEQUENCE = 7
     Q_SEQ = 7
-    QUERY_EXPERIMENT = 8
-    Q_EXP = 8
+    QUERY_PROGRAM = 8
+    Q_PROG = 8
 
 
 class Response(IntEnum):

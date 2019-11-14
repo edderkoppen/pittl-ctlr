@@ -1,0 +1,10 @@
+[Unit]
+Description=PiTTL controller service
+Requires=pigpiod.service
+After=pigpiod.service
+
+[Service]
+ExecStart=pittl-ctlr
+
+[Install]
+WantedBy=pigpiod.service
