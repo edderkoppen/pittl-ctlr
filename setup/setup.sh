@@ -5,7 +5,16 @@ SYSTEMDIR="/lib/systemd/system"
 HERE=$(dirname $(readlink -f "$0"))
 CODEDIR="$HERE/../code"
 
-echo "Performing python install"
+echo "Installing pigpio"
+rm pigpio.zip
+sudo rm -rf PIGPIO
+wget abyz.me.uk/rpi/pigpio/pigpio.zip
+unzip pigpio.zip
+cd PIGPIO
+make
+sudo make install
+
+echo "Installing python libraries"
 cd "$CODEDIR"
 python3 "$CODEDIR/setup.py" install
 
