@@ -1,15 +1,11 @@
 from enum import Enum
-import logging
 import socket
 import time
 
 import netifaces
 
+from pittld import logger
 from pittld.svc import BaseService
-
-
-# Logger
-logger = logging.getLogger(__name__)
 
 
 # Exceptions

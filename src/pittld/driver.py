@@ -1,15 +1,11 @@
 from collections import namedtuple
-import logging
 import random
 import time
 
 import pigpio
 
+from pittld import logger
 from pittld.svc import BaseService
-
-
-# Logging
-logger = logging.getLogger(__name__)
 
 
 # Exceptions

@@ -1,17 +1,13 @@
 from collections import namedtuple
 from enum import Enum
-import logging
 import time
 import queue
 
 import pigpio
 from RPLCD.pigpio import CharLCD
 
+from pittld import logger
 from pittld.svc import BaseService
-
-
-# Logging
-logger = logging.getLogger(__name__)
 
 
 # Constants

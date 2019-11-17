@@ -1,5 +1,7 @@
 from threading import Thread
 
+from pittld import logger
+
 
 def associate(svcs):
     [x.associate([y for y in svcs if y != x])
@@ -18,7 +20,7 @@ class BaseService(Thread):
         try:
             super().start()
         except Exception as e:
-            self.kill_associates()
+            self.kill()
             raise e
 
     def kill_associates(self):
@@ -26,6 +28,7 @@ class BaseService(Thread):
 
     def kill(self):
         if self.is_alive():
+
             self._kill = True
             self.kill_associates()
 

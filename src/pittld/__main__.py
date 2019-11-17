@@ -1,5 +1,7 @@
 import argparse
 
+import pittld
+from pittld import logger
 import pittld.driver
 import pittld.inet
 import pittld.lcd
@@ -16,6 +18,8 @@ svc.associate([lcd, inet, driver, manager])
 
 
 def main():
+    logger.info('Starting pittld {}'.format(pittld.__version__))
+
     lcd.start()
     inet.start()
     driver.start()

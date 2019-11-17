@@ -1,15 +1,11 @@
 from datetime import datetime, timedelta
-import logging
 import pickle
 import socket
 
+from pittld import logger
 from pittld.driver import DriverException
 from pittld.shared import PORT, Response, Request
 from pittld.svc import BaseService
-
-
-# Logging
-logger = logging.getLogger(__name__)
 
 
 # Constants
