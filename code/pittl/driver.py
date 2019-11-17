@@ -28,7 +28,7 @@ pi.write(PIN, OFF)
 
 
 MAX_MICROS = pi.wave_get_max_micros()
-MAX_PULSES = 4000
+MAX_PULSES = 2000
 
 
 # Low-level routines
