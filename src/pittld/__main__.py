@@ -8,10 +8,10 @@ from pittld.svc import group
 
 
 # Stage services and their mutually assured destruction
-lcd = pittl.lcd.Service()
-inet = pittl.inet.Service(lcd)
-driver = pittl.driver.Service(lcd)
-manager = pittl.manager.Service(driver)
+lcd = pittld.lcd.Service()
+inet = pittld.inet.Service(lcd)
+driver = pittld.driver.Service(lcd)
+manager = pittld.manager.Service(driver)
 group([lcd, inet, driver, manager])
 
 
