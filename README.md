@@ -12,6 +12,7 @@ The PiTTL controller is organised into several related hardware components and s
 3. LCD
 4. Connectivity monitor
 
+The software services are packaged under the name *pittld*, for PiTTL Daemon.
 ### The Manager
 The manager provides the software API for commanding and interrogating the PiTTL controller. It is the mean by which a PiTTL client can command and interrogate a PiTTL controller.
 ### The TTL Driver
@@ -26,5 +27,14 @@ The PiTTL HAT was designed with a HD44780 16colx2row LCD which can display infor
 The PiTTL controller was designed for ease of control in mind, and in that vein there is a service which supplies the primary ip address and interface that the Raspberry Pi controller is using to the LCD.
 
 ## Installation
-### Components
+### HAT Construction
 If you don't have an already constructed PiTTL, one can be constructed relatively cheaply. The hardware for PiTTL has been designed like a Raspberry Pi HAT (https://www.raspberrypi.org/blog/introducing-raspberry-pi-hats/), to live on an auxiliary baord which talks to the Raspberry Pi via its GPIO headers. The schematics for the HAT are detailed in the **board** sub-repo (https://github.com/edderkoppen/pittl-ctlr/board), and can be viewed with EDA software. I used Eagle (https://www.autodesk.com/products/eagle/overview). The gerber files packaged in the **board** sub-repo can be supplied to a custom PCB-vendor in order to custom print the PCB for the HAT.
+
+### Software Installation
+One may install the PiTTL controller software on any Raspberry Pi, although the software has only been tested with the Raspberry Pi 4, and the practical limitation of the TTL driver listed above are given in the context of the hardware on a Raspberry Pi 4. Presumably, the software will function on a variety of operating systems, but certain features have been designed with Raspbian in mind (e.g. automatic start using systemd).
+
+The only software prerequisites for the installation of pittld are python >=3.4, python setuptools, and a C-compiler for the compilation of pigpio. To setup and install the software, a very rudimentary shell script *setup/setup.sh* is provided, which should be run as root. Be warned, the setup script is non-transactional and doesn't try very hard to catch errors, so one should pay attention closely to stdout during the installation. If setup completes successfully, pittld may be started from the command line by entering
+> pittld
+or, assuming the installation of the systemd units went as expected, upon restart of the Raspberry Pi. The logs for pittld can be followed with
+> journalctl -f -u pittld
+on Raspbian. Confirmation that pittld is running successfully can be found in journalctl or by observing the updates on the HAT's LCD.
