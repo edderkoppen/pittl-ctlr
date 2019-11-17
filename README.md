@@ -12,7 +12,7 @@ The PiTTL controller is organised into several related hardware components and s
 3. LCD
 4. Connectivity monitor
 
-The software services are packaged under the name *pittld*, for PiTTL Daemon.
+The software services are packaged under the name **pittld**, for PiTTL Daemon.
 ### The Manager
 The manager provides the software API for commanding and interrogating the PiTTL controller. It is the mean by which a PiTTL client can command and interrogate a PiTTL controller.
 ### The TTL Driver
