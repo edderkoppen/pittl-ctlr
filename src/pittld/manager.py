@@ -27,7 +27,7 @@ class Service(BaseService):
         self.driver_svc = driver_svc
 
     def respond(self, msg, data=None):
-        event = (msg, data)
+        event = (msg.value, data)
 
         b = pickle.dumps(event)
         try:
@@ -42,8 +42,7 @@ class Service(BaseService):
         n = round(m / BLOCK_SZ - 0.5) + int((m % BLOCK_SZ) > 0)
 
         # Header
-        hdr = pickle.dumps((Response.STREAM, n))
-        self.client.send(hdr)
+        self.respond(Response.STREAM, n)
 
         # Body
         try:
