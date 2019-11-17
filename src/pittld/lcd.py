@@ -1,14 +1,17 @@
 from collections import namedtuple
 from enum import Enum
 import logging
-from threading import Thread
 import time
 import queue
 
 import pigpio
 from RPLCD.pigpio import CharLCD
 
-from pittl import logger
+from pittld.svc import BaseService
+
+
+# Logging
+logger = logging.getLogger(__name__)
 
 
 # Constants
@@ -20,7 +23,7 @@ pi = pigpio.pi()
 
 
 # Service
-class Service(Thread):
+class Service(BaseService):
 
     def __init__(self):
         super().__init__()

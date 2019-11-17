@@ -2,9 +2,13 @@ import logging
 import sys
 
 
+# Version
+__version__ = '0.2.0'
+
+
 # Logging config
-logger = logging.getLogger('pittl')
-logger.setLevel(logging.INFO)
+logger = logging.getLogger(__version__)
+logger.setLevel(logging.DEBUG)
 
 sh = logging.StreamHandler(sys.stdout)
 

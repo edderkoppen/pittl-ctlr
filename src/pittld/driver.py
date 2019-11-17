@@ -1,11 +1,15 @@
 from collections import namedtuple
+import logging
 import random
-from threading import Thread
 import time
 
 import pigpio
 
-from pittl import logger
+from pittld.svc import BaseService
+
+
+# Logging
+logger = logging.getLogger(__name__)
 
 
 # Exceptions
@@ -13,7 +17,7 @@ class DriverException(Exception):
     pass
 
 
-# Some more constants
+# GPIO/misc Constants
 PIN = 14
 ON = 0
 OFF = 1
@@ -27,6 +31,7 @@ pi.set_mode(PIN, pigpio.OUTPUT)
 pi.write(PIN, OFF)
 
 
+# Pigpio constants
 MAX_MICROS = pi.wave_get_max_micros()
 MAX_PULSES = 2000
 
@@ -144,7 +149,7 @@ class Timing:
 
 
 # Service
-class Service(Thread):
+class Service(BaseService):
 
     def __init__(self, lcd_svc):
         super().__init__()
@@ -174,7 +179,7 @@ class Service(Thread):
     def run(self):
         logger.info('Starting pigpio driver service')
 
-        while True:
+        while not self._kill:
             self._display()
 
             if self._chain and self._chain_idx < len(self._chain) - 1:

@@ -1,11 +1,15 @@
 from datetime import datetime, timedelta
+import logging
 import pickle
 import socket
-from threading import Thread
 
-from pittl import logger
-from pittl.driver import DriverException
-from pittl.shared import PORT, Response, Request
+from pittld.driver import DriverException
+from pittld.shared import PORT, Response, Request
+from pittld.svc import BaseService
+
+
+# Logging
+logger = logging.getLogger(__name__)
 
 
 # Constants
@@ -14,7 +18,7 @@ BLOCK_SZ = 1024
 
 
 # Service
-class Service(Thread):
+class Service(BaseService):
 
     def __init__(self, driver_svc):
         super().__init__()

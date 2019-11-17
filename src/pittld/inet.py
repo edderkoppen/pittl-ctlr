@@ -1,13 +1,18 @@
 from enum import Enum
+import logging
 import socket
-from threading import Thread
 import time
 
 import netifaces
 
-from pittl import logger
+from pittld.svc import BaseService
 
 
+# Logger
+logger = logging.getLogger(__name__)
+
+
+# Exceptions
 class InetError(Exception):
     pass
 
@@ -23,7 +28,7 @@ class IF(Enum):
 
 
 # Service
-class Service(Thread):
+class Service(BaseService):
 
     def __init__(self, lcd_svc):
         super().__init__()
@@ -35,7 +40,7 @@ class Service(Thread):
 
     def run(self):
         logger.info('Starting inet service')
-        while True:
+        while not self._kill:
             # Check that there aren't any low-level network config problems
             ifs = netifaces.interfaces()
             if not (IF.ETH.value in ifs and IF.WLAN.value in ifs):
