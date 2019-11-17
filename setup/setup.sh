@@ -15,7 +15,7 @@ make
 sudo make install
 
 ret=$?
-if [$ret -ne 0 ]; then
+if [ $ret -ne 0 ]; then
 	exit $ret
 fi
 
@@ -24,7 +24,7 @@ cd "$SRCDIR"
 python3 "$SRCDIR/setup.py" install
 
 ret=$?
-if [$ret -ne 0 ]; then
+if [ $ret -ne 0 ]; then
 	exit $ret
 fi
 
@@ -37,7 +37,7 @@ systemctl enable pigpiod.service
 systemctl enable pittl-ctlr.service
 
 ret=$?
-if [$ret -ne 0 ]; then
+if [ $ret -ne 0 ]; then
 	exit $ret
 fi
 
