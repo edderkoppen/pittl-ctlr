@@ -1,9 +1,9 @@
 from threading import Thread
 
 
-def group(svcs):
-    for x in svcs:
-        x.madden([y for y in threads if y != x])
+def associate(svcs):
+    [x.associate([y for y in svcs if y != x])
+     for x in svcs]
 
 
 class BaseService(Thread):
@@ -29,6 +29,6 @@ class BaseService(Thread):
             self._kill = True
             self.kill_associates()
 
-    def MADden(self, threads):
+    def associate(self, threads):
         self._associates = threads
 
