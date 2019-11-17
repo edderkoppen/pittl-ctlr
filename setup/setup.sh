@@ -1,9 +1,9 @@
 F1="pigpiod.service"
-F2="pittl-ctlr.service"
+F2="pittld.service"
 SYSTEMDIR="/lib/systemd/system"
 
 HERE=$(dirname $(readlink -f "$0"))
-CODEDIR="$HERE/../code"
+SRCDIR="$HERE/../src"
 
 echo "Installing pigpio"
 rm pigpio.zip
@@ -15,8 +15,8 @@ make
 sudo make install
 
 echo "Installing python libraries"
-cd "$CODEDIR"
-python3 "$CODEDIR/setup.py" install
+cd "$SRCDIR"
+python3 "$SRCDIR/setup.py" install
 
 echo "Adding systemd units"
 cp "$HERE/pigpiod.service" "$SYSTEMDIR"
