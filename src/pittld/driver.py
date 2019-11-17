@@ -248,7 +248,7 @@ class Service(BaseService):
         self.committed_seq = None
 
         self._chain = None
-        self._chain_idx = None
+        self._chain_idx = 0
         self.started = None
         self._staged_wf = None
         self._wf_start = None
