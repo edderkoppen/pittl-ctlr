@@ -33,8 +33,8 @@ If you don't have an already constructed PiTTL, one can be constructed relativel
 ### Software Installation
 One may install the PiTTL controller software on any Raspberry Pi, although the software has only been tested with the Raspberry Pi 4, and the practical limitation of the TTL driver listed above are given in the context of the hardware on a Raspberry Pi 4. Presumably, the software will function on a variety of operating systems, but certain features have been designed with Raspbian in mind (e.g. automatic start using systemd).
 
-The only software prerequisites for the installation of pittld are python >=3.4, python setuptools, and a C-compiler for the compilation of pigpio. To setup and install the software, a very rudimentary shell script *setup/setup.sh* is provided, which should be run as root. Be warned, the setup script is non-transactional and doesn't try very hard to catch errors, so one should pay attention closely to stdout during the installation. If setup completes successfully, pittld may be started from the command line by entering
-*pittld*
-or, assuming the installation of the systemd units went as expected, upon restart of the Raspberry Pi. The logs for pittld can be followed with
-*journalctl -f -u pittld*
+The only software prerequisites for the installation of pittld are python >=3.4, python setuptools, and a C-compiler for the compilation of pigpio. To setup and install the software, a very rudimentary shell script *setup/setup.sh* is provided, which should be run as root. Be warned, the setup script is non-transactional and doesn't try very hard to catch errors, so one should pay attention closely to stdout during the installation. If setup completes successfully, pittld may be started by entering  
+*pittld*  
+at the command line or, assuming the installation of the systemd units went as expected, upon restart of the Raspberry Pi. The logs for pittld can be followed with  
+*journalctl -f -u pittld*  
 on Raspbian. Confirmation that pittld is running successfully can be found in journalctl or by observing the updates on the HAT's LCD.
