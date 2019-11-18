@@ -11,7 +11,11 @@ PiTTL can be used to stage and then generate individual sequences of TTL pulses,
 
 **Timing** is specified with 3 parameters: the **total time**, **exposure fraction**, and **resolution**. Total time is the desired length of the program, exposure fraction is the desired fraction of the program during which TTL-on logic will occur, and resolution is the minimum width of a TTL-on pulse. The resolution parameter is *very* important. It drastically simplifies the algorithm for generating random sequences of pulses satisfying the desired exposure fraction. It is important to note that when these three parameters are supplied to PiTTL, that total time and exposure fraction will be adjusted so that the time spent in TTL-on and TTL-off are both integer multiples of the resolution, and so that they are as close to the values specified as possible. Thus, after staging, timing is converted into the **specified**, **adjusted**, and **digital** domains. The **specified** timing are those floating point values requested, **adjusted** are those values after adjustment for resolution, and **digital** are those values in integral units of resolution.
 
-A **sequence** is literally a binary sequence representing the TTL-logic time-series of the program. PiTTL can be induced to randomly generate a sequence based on any valid staged timing.
+A **sequence** is literally a binary sequence representing the TTL-logic time-series of the program. PiTTL can be induced to randomly generate a sequence based on any valid staged timing. If a sequence has been staged and new timing is then staged, the two are unrelated, and the staged sequence is purged.
+
+Once a program has been started, the timing and the sequence are considered **committed**. New sequences and timing can be staged without interrupting the running program.
+
+PiTTL is capable of evaluating the **progress** and **ETA** of a currently running program, and also stopping a program, clearing any committed timings and sequences.
 
 ### Details
 The PiTTL controller is organised into several related hardware components and software services. These are the:
@@ -22,7 +26,7 @@ The PiTTL controller is organised into several related hardware components and s
 
 The software services are packaged under the name **pittld**, for PiTTL Daemon.
 ### The Manager
-The manager provides the software API for commanding and interrogating the PiTTL controller. It is the means by which a PiTTL client can command and interrogate a PiTTL controller.
+The manager provides a public endpoint for communicating with a PiTTL controller. It is the means by which a PiTTL client can command a PiTTL controller to stage timing and sequences and to start and stop programs, and also the means by which a PiTTL client can query a PiTTL controller for any staged or committed timing or sequences, or the progress of any running program.
 ### The TTL Driver
 This software service leverages the use of the python library PiGPIO (http://abyz.me.uk/rpi/pigpio/) and a MOSFET to generate the ~4.4V square wave pulses consituting a TTL pulse train.
 
