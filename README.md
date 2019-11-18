@@ -56,7 +56,7 @@ The only software prerequisites for the installation of pittld are python >=3.4,
 
 >*pittld*
 
-at the command line or-- assuming the installation of the systemd units succeeded-- automatically upon restart of the Raspberry Pi. The logs for pittld can be followed with  
+at the command-line or-- assuming the installation of the systemd units succeeded-- automatically upon restart of the Raspberry Pi. The logs for pittld can be followed with  
 
 >*journalctl -f -u pittld*
 
