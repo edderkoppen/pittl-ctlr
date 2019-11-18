@@ -19,6 +19,11 @@ PiTTL is capable of evaluating the **progress** and **ETA** of a currently runni
 
 This functionality is implemented via PiTTL controller's python API and publicly via the combination of the PiTTL controller's manager service and the PiTTL client (https://github.com/edderkoppen/pittl-client).
 
+#### Troubleshooting
+If the PiTTL controller is not behaving as expected (usually indicated by oddities displayed on the HAT's LCD), or has encountered an error, the most robust way to fix the problem is to cycle the power on the Raspberry Pi. There has not yet been implemented a robust software means of resetting the pittld service.
+
+If problems persist, the software repository should be updated and the service reinstalled. If further problems persist, a fresh Raspbian should be installed. 
+
 ### Details
 The PiTTL controller is organised into several related hardware components and software services. These are the:
 1. Manager
