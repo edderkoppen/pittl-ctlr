@@ -36,9 +36,9 @@ This software includes the routines to approximately sample from the collection 
 
 This software also contains routines to generate TTL-pulse trains of (ideally) arbitrary frequencey and duty-cycle, but as of 0.2.0 these have not been extensively tested.
 ### The LCD
-The PiTTL HAT was designed with a HD44780 16colx2row LCD which can display information about connectivity and program progress without having to ssh into the Raspberry Pi or use the PiTTL client for interrogation.
+The PiTTL HAT was designed with a HD44780 16colx2row LCD which can convey information about connectivity and program progress without having to use the python API, pittld logs, or PiTTL client.
 ### The Connectivity Monitor
-The PiTTL controller was designed for ease of control in mind, and in that vein there is a service which supplies the primary ip address and interface that the Raspberry Pi controller is using to the LCD.
+The connectivity monitor supplies pittld with information regarding internet connectivity.
 
 ## Installation
 ### HAT Construction
