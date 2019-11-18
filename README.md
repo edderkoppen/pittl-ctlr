@@ -17,7 +17,7 @@ Once a program has been started, the timing and the sequence are considered **co
 
 PiTTL is capable of evaluating the **progress** and **ETA** of a currently running program, and also stopping a program, clearing any committed timings and sequences.
 
-This functionality is implemented via the python API and publicly via the combination of the PiTTL manager service and the PiTTL client (https://github.com/edderkoppen/pittl-client).
+This functionality is implemented via PiTTL controller's python API and publicly via the combination of the PiTTL controller's manager service and the PiTTL client (https://github.com/edderkoppen/pittl-client).
 
 ### Details
 The PiTTL controller is organised into several related hardware components and software services. These are the:
