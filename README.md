@@ -3,11 +3,11 @@ Raspberry Pi TTL Controller, 0.2.0
 nGelwan | 2019
 
 ## Introduction
-PiTTL is a collection of schematics and code which can be used to cheaply build a remotely-controllable random TTL sequence generator using a Raspberry Pi 4 (https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) and a couple of additional hardware components. It consists of two parts, the PiTTL controller, contained in this repository, and the PiTTL client (https://github.com/edderkoppen/pittl-client). When pushed to the extreme, PiTTL supports generating sequences which run for at least a month consisting of pulses of less than 10ms duration. 
+PiTTL is a collection of schematics and code which can be used to cheaply build a remotely-controllable random TTL sequence generator using a Raspberry Pi 4 (https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) and a couple of additional hardware components. It consists of two parts, the PiTTL controller, contained in this repository, and the PiTTL client (https://github.com/extradosages/pittl-client). When pushed to the extreme, PiTTL supports generating sequences which run for at least a month consisting of pulses of less than 10ms duration. 
 
 ## Installation
 ### HAT Construction
-If you don't have an already constructed PiTTL, one can be constructed relatively cheaply. The hardware for PiTTL has been designed like a Raspberry Pi HAT (https://www.raspberrypi.org/blog/introducing-raspberry-pi-hats/), to live on an auxiliary baord which talks to the Raspberry Pi via its GPIO headers. The schematics for the HAT are detailed in the **board** sub-repo (https://github.com/edderkoppen/pittl-ctlr/board), and can be viewed with EDA software. I used Eagle (https://www.autodesk.com/products/eagle/overview). The gerber files packaged in the **board** sub-repo can be supplied to a custom PCB-vendor in order to custom print the PCB for the HAT.
+If you don't have an already constructed PiTTL, one can be constructed relatively cheaply. The hardware for PiTTL has been designed like a Raspberry Pi HAT (https://www.raspberrypi.org/blog/introducing-raspberry-pi-hats/), to live on an auxiliary baord which talks to the Raspberry Pi via its GPIO headers. The schematics for the HAT are detailed in the **board** sub-repo (https://github.com/extradosages/pittl-ctlr/board), and can be viewed with EDA software. I used Eagle (https://www.autodesk.com/products/eagle/overview). The gerber files packaged in the **board** sub-repo can be supplied to a custom PCB-vendor in order to custom print the PCB for the HAT.
 
 ### Software Installation
 One may install the PiTTL controller software on any Raspberry Pi, although the software has only been tested with the Raspberry Pi 4, and the practical limitation of the TTL driver listed above are given in the context of the hardware on a Raspberry Pi 4. Presumably, the software will function on a variety of operating systems, but certain features have been designed with Raspbian in mind (e.g. automatic start using systemd).
@@ -34,7 +34,7 @@ Once a program has been **started**, the timing and the sequence are considered 
 
 PiTTL is capable of evaluating the **progress** and **ETA** of a currently running program, and also **stopping** a program, clearing any committed timings and sequences.
 
-This functionality is implemented via PiTTL controller's python API and publicly via the combination of the PiTTL controller's manager service and the PiTTL client (https://github.com/edderkoppen/pittl-client).
+This functionality is implemented via PiTTL controller's python API and publicly via the combination of the PiTTL controller's manager service and the PiTTL client (https://github.com/extradosages/pittl-client).
 
 ### Details
 The PiTTL controller is organised into several related hardware components and software services. These are the:
