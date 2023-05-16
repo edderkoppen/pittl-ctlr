@@ -7,6 +7,6 @@ type: software
 authors:
   - given-names: Noah
     family-names: Gelwan
-    email: gelwan@nana.io
+    email: extradosages@gmail.com
 license: Apache-2.0
 repository-code: "https://github.com/extradosages/pittl-ctlr"
